@@ -4,18 +4,31 @@
   "description": "\"# New repo\"",
   "main": "index.js",
   "scripts": {
+    "build:ui": "@powershell Remove-Item -Recurse -Force public && cd ../fullstack2022/osa2/puhelinluettelo && set NODE_OPTIONS=--openssl-legacy-provider && npm run build && @powershell Copy-Item build -Recurse -Destination ../../../fullstack2024-osa3/public",
+    "deploy": "fly deploy",
+    "deploy:full": "npm run build:ui && npm run deploy",
+    "logs:prod": "fly logs",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^9.11.1",
+    "@flydotio/dockerfile": "^0.5.8",
+    "@stylistic/eslint-plugin-js": "^2.8.0",
+    "@types/node": "^22.6.1",
+    "eslint": "^9.11.1",
+    "globals": "^15.9.0",
     "nodemon": "^3.1.4"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "mongoose": "^8.6.3",
     "morgan": "^1.10.0"
   }
 }

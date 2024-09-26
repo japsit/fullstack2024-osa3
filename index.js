@@ -1,10 +1,30 @@
-const express = require('express');
+const express = require('express')
 const app = express()
-const morgan = require('morgan');
+const morgan = require('morgan')
 const cors = require('cors')
+const { notEqual } = require('assert')
+const Person = require('./models/person')
+const { default: mongoose } = require('mongoose')
 
 app.use(cors())
 app.use(express.json());
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+
+  if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message });  // Validointivirheet
+  }
+
+  // Jos mikään erityinen virhe ei täsmää, palautetaan yleinen 500-virhe
+  return response.status(500).send({ error: 'Something went wrong on the server' });
+
+  next(error)
+}
 
 morgan.token('response-body', (req, res) => {
   return res.locals.bodyContent || ''; // Lisää token, joka loggaa vastauksen sisällön
@@ -31,82 +51,110 @@ app.use((req, res, next) => {
 })
 
 
-let persons = [
-    {
-      "id": "1",
-      "name": "Arto Hellas",
-      "number": "040-123456"
-    },
-    {
-      "id": "2",
-      "name": "Ada Lovelace",
-      "number": "39-44-5323523"
-    },
-    {
-      "id": "3",
-      "name": "Dan Abramov",
-      "number": "12-43-234345"
-    },
-    {
-      "id": "4",
-      "name": "Mary Poppendieck",
-      "number": "39-23-6423122"
-    }
-  ]
+app.post('/api/persons', (request, response, next) => {
+  const { name, number } = request.body
 
-  app.post('/api/persons', (request, response) => {
-    const person = request.body
-    const randomId = Math.floor(Math.random() * (1000000)) + 6
-    person.id = "" + randomId
+  let errors = []
 
-    let errors = []
+  if (!name) {
+    errors.push('Name is required.')
+  }
+  if (!number) {
+    errors.push('Number is required.')
+  }
 
-    if (!person.name) {
-        errors.push('Name is required.')
-    }
-    if (!person.number) {
-        errors.push('Number is required.')
-    }
+  // Palauta 400 virheet
+  if (errors.length > 0) {
+    const validationError = new Error(errors.join(' ')); // Luodaan virhe-objekti
+    validationError.name = 'ValidationError'; // Asetetaan virheen nimi, jotta errorHandler voi tunnistaa sen
+    return next(validationError); // Välitetään virhe virheidenkäsittelyyn
+  }
 
-    // Palauta 400 virheet
-    if (errors.length > 0) {
-        return response.status(400).send(errors.join(' '))
-    }
-
-    // Käsittele tilanne, jos nimi on jo luettelossa
-    if (persons.some(a => a.name === person.name)) {
+  // Käsittele tilanne, jos nimi on jo luettelossa
+  Person.findOne({ name: name })
+    .then(existingPerson => {
+      if (existingPerson) {
+        // Jos henkilö löytyy, palautetaan virheviesti
         return response.status(409).send('Name must be unique.')
-    }
+      }
 
-    persons.push(person)
-    response.json(person)
-  })
+      // Jos nimeä ei löydy, jatka uuden henkilön tallentamista
+      const person = new Person({
+        name: name,
+        number: number
+      })
+
+      person.save().then(results => {
+        console.log(`added ${name} ${number} to phonebook`)
+        response.json(results)
+      })
+      .catch(error => next(error)) // Savetus-virheen käsittely
+    })
+    .catch(error => next(error));
+})
+
 
   app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Person.find({}).then(persons => {
+      response.json(persons.map(person => person.toJSON()))
+    })
   })
 
-  app.get('/api/persons/:id', (request, response) => {
-    const id = request.params.id
-    const person = persons.find(person => person.id === id)
-    if (person === undefined) {
-        response.status(404).end
-    }
-    response.json(person)
+  app.get('/api/persons/:id', (request, response, next) => {
+    Person.findById(request.params.id)
+      .then(person => {
+        if (!person) { 
+          return response.status(404).end()
+        }
+        response.json(person)
+      })
+      .catch(error => next(error))
+  });
+  
+
+  app.delete('/api/persons/:id', (request, response, next) => {
+    Person.findByIdAndDelete(request.params.id)
+    .then(result => {
+      if (!result) {
+        // Jos henkilöä ei löydy tietokannasta, palautetaan 404
+        return response.status(404).send({ error: 'Person not found' });
+      }
+      response.status(204).end()
+    })
+    .catch(error => next(error))
   })
 
-  app.delete('/api/persons/:id', (request, response) => {
-    const id = request.params.id
-    persons = persons.filter(person => person.id !== id)
-    response.status(204).end()
+  app.get('/info', (request, response, next) => {
+    Person.countDocuments({})
+    .then(count => {
+      response.send(`<p>Phonebook has info for ${count} people</p><p>${new Date()}</p>`);
+    })
+    .catch(error => next(error));
   })
 
-  app.get('/info', (request, response) => {
+  app.put('/api/persons/:id', (request, response, next) => {
+    const { name, number } = request.body
+  
+    Person.findByIdAndUpdate(
+      request.params.id, 
+      { number: number },
+      { new: true, runValidators: true, context: 'query' }  
+    )
+    .then(updatedPerson => {
+      if (!updatedPerson) {
+        return response.status(404).send({ error: 'Person not found' })
+      }
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
+  });
+  
+  app.use(errorHandler)
 
-    response.send(`<p>Phonebook has info for ${persons.length} people</p><p>${new Date()}</p>`)
-  })
+  app.use(express.static('public'))
+
   
   const PORT = 3001
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0',() => {
     console.log(`Server running on port ${PORT}`)
   })

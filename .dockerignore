@@ -1,0 +1,44 @@
+# Node.js: Estä riippuvuuksien päätyminen Git-repositoryyn
+node_modules/
+
+# Ympäristömuuttujien tiedostot (esim. dotenv)
+.env
+
+# Jos käytät TypeScriptiä, käännetyt tiedostot ja muut väliaikaiset tiedostot
+dist/
+build/
+*.tsbuildinfo
+
+# npm ja Yarn lokitiedostot
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# package-lock.json voidaan joskus jättää ulos, jos halutaan estää versionhallinta
+# mutta useimmiten se kannattaa kuitenkin lisätä versiohallintaan.
+# package-lock.json
+
+# Ohjelmointityökalujen kuten jestin, ESlintin ja tms. luomat tiedostot
+coverage/
+.cache/
+.vscode/
+.idea/
+.DS_Store
+
+# Logitiedostot
+logs/
+*.log
+
+# Väliaikaiset tiedostot ja hakemistot
+tmp/
+temp/
+
+# Debug-tiedostot
+*.swp
+*.swo
+
+# Git itself - Vältetään git-merge ja gitin luomat tiedostot
+*.orig
+
+# Tiedostot, jotka liittyvät hosting-alustoihin (esim. Heroku)
+*.env.local
