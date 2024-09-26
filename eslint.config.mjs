@@ -25,6 +25,15 @@ export default [
         'error',
         'never'
       ],
+      'eqeqeq': 'error',
+      'no-trailing-spaces': 'error',
+      'object-curly-spacing': [
+        'error', 'always'
+      ],
+      'arrow-spacing': [
+        'error', { 'before': true, 'after': true },
+      ],
+      'no-console': 'off',
     },
     files: ["**/*.js"], 
     languageOptions: {
@@ -33,11 +42,13 @@ export default [
   },
   {
     languageOptions: { 
-      globals: globals.browser 
+      globals: {
+        ...globals.browser,
+        ...globals.node, // Lisätty Node.js-ympäristön tuki
+      }
     }
   },
   { 
-    ignores: ["dist/**"],
+    ignores: ["public/**"],
   },
-  
-];
+]
